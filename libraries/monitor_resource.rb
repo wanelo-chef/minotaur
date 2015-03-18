@@ -43,15 +43,18 @@ class Chef::Resource::MinotaurMonitor < Chef::Resource
   end
 
   def ==(o)
+    return false unless o
     to_hash == o.to_hash
   end
 
   def to_hash
     {name: name, redis_uri: redis_uri, table_name: table_name, environment: environment}
+  rescue Chef::Exceptions::ValidationFailed
+    {}
   end
 
   private
-  
+
   def from_hash(hash)
     name(hash[:name])
     redis_uri(hash[:redis_uri])
