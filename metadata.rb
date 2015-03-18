@@ -6,4 +6,5 @@ description      'Installs sequel-schema-sharding-minotaur for histograms of sha
 long_description 'Installs sequel-schema-sharding-minotaur for histograms of shard access'
 version          '0.1.0'
 
+depends 'bundler' # see Berksfile
 depends 'smf'

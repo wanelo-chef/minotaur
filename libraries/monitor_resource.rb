@@ -24,4 +24,46 @@ class Chef::Resource::MinotaurMonitor < Chef::Resource
   def environment(arg=nil)
     set_or_return(:environment, arg, kind_of: Hash, default: {})
   end
+
+  def load
+    return self unless checksum_exists?
+    from_hash(Marshal.load(::File.read(checksum_file)))
+    self
+  end
+
+  def save
+    ::FileUtils.mkdir_p(Chef::Config.checksum_path)
+    ::File.open(checksum_file, 'w') do |f|
+      f.write Marshal.dump(to_hash)
+    end
+  end
+
+  def changed?(current_resource)
+    self != current_resource
+  end
+
+  def ==(o)
+    to_hash == o.to_hash
+  end
+
+  def to_hash
+    {name: name, redis_uri: redis_uri, table_name: table_name, environment: environment}
+  end
+
+  private
+  
+  def from_hash(hash)
+    name(hash[:name])
+    redis_uri(hash[:redis_uri])
+    table_name(hash[:table_name])
+    environment(hash[:environment])
+  end
+
+  def checksum_file
+    '%s/minotaur-monitor--%s' % [Chef::Config.checksum_path, name]
+  end
+
+  def checksum_exists?
+    ::File.exists?(checksum_file)
+  end
 end

@@ -2,7 +2,7 @@ require 'chef/provider'
 
 class Chef::Provider::MinotaurMonitor < Chef::Provider
   def load_current_resource
-    @current_resource ||= Chef::Resource::MinotaurMonitor.new(new_resource.name)
+    @current_resource ||= Chef::Resource::MinotaurMonitor.new(new_resource.name).load
   end
 
   def action_create
@@ -12,13 +12,17 @@ class Chef::Provider::MinotaurMonitor < Chef::Provider
       repository helper.repo
       revision helper.ref
       action :sync
-      notifies :run, 'execute[bundle exec shard minotaur]'
+      notifies :run, "bundle[bundle install minotaur - #{new_resource.name}]"
     end
 
-    execute 'bundle exec shard minotaur' do
-      command 'bundle install --gemfile %s --deployment --without development test --path %s' % helper.bundle_args
+    bundler_action = new_resource.changed?(current_resource) ? :install : :nothing
+    bundle "bundle install minotaur - #{new_resource.name}" do
+      user 'root'
+      group 'root'
+      gemfile helper.gemfile
+      path helper.bundle_directory
       environment new_resource.environment
-      action :nothing
+      action bundler_action
       notifies :updated_by_last_action, 'minotaur_monitor[%s]' % new_resource.name, :immediately
     end
 
@@ -39,6 +43,8 @@ class Chef::Provider::MinotaurMonitor < Chef::Provider
 
       notifies :updated_by_last_action, 'minotaur_monitor[%s]' % new_resource.name, :immediately
     end
+
+    new_resource.save if changed?
   end
 
   def action_restart
@@ -47,6 +53,7 @@ class Chef::Provider::MinotaurMonitor < Chef::Provider
   end
 
   def action_updated_by_last_action
+    new_resource.save
     new_resource.updated_by_last_action(true)
   end
 
@@ -66,4 +73,7 @@ class Chef::Provider::MinotaurMonitor < Chef::Provider
     end
   end
 
+  def changed?
+    new_resource != current_resource
+  end
 end
